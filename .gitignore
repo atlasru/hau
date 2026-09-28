@@ -1,0 +1,12 @@
+/build*/
+/.cache/
+/.idea/
+/.vscode/
+CMakeUserPresets.json
+*.user
+*.log
+*.tox
+*.db
+*.db-shm
+*.db-wal
+profiles/
