@@ -38,6 +38,8 @@ jobs:
 
   windows:
     runs-on: windows-2022
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static
     steps:
       - uses: actions/checkout@v4
       - uses: jurplel/install-qt-action@v4
@@ -49,9 +51,17 @@ jobs:
       - uses: lukka/run-vcpkg@v11
         with:
           vcpkgJsonGlob: 'vcpkg.json'
+          runVcpkgInstall: true
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Locate pkgconf
+        shell: pwsh
+        run: |
+          $pkg = Get-ChildItem -Path "$env:GITHUB_WORKSPACE" -Recurse -Filter pkgconf.exe -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match "(vcpkg_installed|packages)" } | Select-Object -First 1
+          if (-not $pkg) { throw 'vcpkg pkgconf.exe was not found' }
+          "HAU_PKGCONF=$($pkg.FullName)" >> $env:GITHUB_ENV
       - name: Configure
         shell: pwsh
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DPKG_CONFIG_EXECUTABLE="$env:HAU_PKGCONF"
       - name: Build
         run: cmake --build build --parallel 2
       - name: Test
