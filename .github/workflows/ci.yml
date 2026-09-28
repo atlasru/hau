@@ -25,6 +25,16 @@ jobs:
         run: cmake --build build --parallel 2
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: Smoke test GUI and profile creation
+        run: |
+          mkdir -p "$RUNNER_TEMP/hau-smoke"
+          set +e
+          QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software XDG_DATA_HOME="$RUNNER_TEMP/hau-smoke" timeout 5s ./build/bin/HAU > "$RUNNER_TEMP/hau-smoke.log" 2>&1
+          status=$?
+          set -e
+          cat "$RUNNER_TEMP/hau-smoke.log"
+          test "$status" -eq 124
+          test "$(find "$RUNNER_TEMP/hau-smoke" -name profile.tox | wc -l)" -eq 1
       - name: Package
         run: |
           mkdir -p dist/HAU-linux-x86_64
@@ -39,7 +49,7 @@ jobs:
   windows:
     runs-on: windows-2022
     env:
-      VCPKG_DEFAULT_TRIPLET: x64-windows-static
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
     steps:
       - uses: actions/checkout@v4
       - uses: jurplel/install-qt-action@v4
@@ -61,7 +71,7 @@ jobs:
           "HAU_PKGCONF=$($pkg.FullName)" >> $env:GITHUB_ENV
       - name: Configure
         shell: pwsh
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DPKG_CONFIG_EXECUTABLE="$env:HAU_PKGCONF"
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DPKG_CONFIG_EXECUTABLE="$env:HAU_PKGCONF"
       - name: Build
         run: cmake --build build --parallel 2
       - name: Test

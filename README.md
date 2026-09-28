@@ -24,7 +24,7 @@ ctest --test-dir build --output-on-failure
 Windows: install Qt 6.8.3 for MSVC 2022, Ninja and vcpkg. `vcpkg.json` installs libsodium for the static triplet:
 
 ```powershell
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
