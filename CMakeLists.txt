@@ -44,7 +44,8 @@ set_source_files_properties(ui/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TR
 qt_add_qml_module(HAU URI HAU VERSION 1.0 QML_FILES
     ui/qml/Main.qml ui/qml/Theme.qml)
 target_link_libraries(HAU PRIVATE hau_core Qt6::Gui Qt6::Quick Qt6::QuickControls2)
-set_target_properties(HAU PROPERTIES WIN32_EXECUTABLE TRUE)
+set_target_properties(HAU PROPERTIES WIN32_EXECUTABLE TRUE
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 if(BUILD_TESTING)
     qt_add_executable(hau_tests tests/TestFoundation.cpp)

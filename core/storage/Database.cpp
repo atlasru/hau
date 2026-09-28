@@ -12,18 +12,18 @@ bool Database::open(const QString &path, QString &error) {
     if (!db.transaction()) { error = db.lastError().text(); db = {}; close(); return false; }
     QSqlQuery query(db);
     if (!query.exec(QStringLiteral("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"))) {
-        error = query.lastError().text(); db.rollback(); query = {}; db = {}; close(); return false;
+        error = query.lastError().text(); db.rollback(); query = QSqlQuery(); db = {}; close(); return false;
     }
     if (!query.exec(QStringLiteral("SELECT COALESCE(MAX(version), 0) FROM schema_migrations")) || !query.next()) {
-        error = query.lastError().text(); db.rollback(); query = {}; db = {}; close(); return false;
+        error = query.lastError().text(); db.rollback(); query = QSqlQuery(); db = {}; close(); return false;
     }
     const int version = query.value(0).toInt();
-    if (version > 1) { error = QStringLiteral("Database schema is newer than this application"); db.rollback(); query = {}; db = {}; close(); return false; }
+    if (version > 1) { error = QStringLiteral("Database schema is newer than this application"); db.rollback(); query = QSqlQuery(); db = {}; close(); return false; }
     if (version == 0 && !query.exec(QStringLiteral("INSERT INTO schema_migrations(version, applied_at) VALUES(1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))"))) {
-        error = query.lastError().text(); db.rollback(); query = {}; db = {}; close(); return false;
+        error = query.lastError().text(); db.rollback(); query = QSqlQuery(); db = {}; close(); return false;
     }
-    if (!db.commit()) { error = db.lastError().text(); db.rollback(); query = {}; db = {}; close(); return false; }
-    query = {}; db = {};
+    if (!db.commit()) { error = db.lastError().text(); db.rollback(); query = QSqlQuery(); db = {}; close(); return false; }
+    query = QSqlQuery(); db = {};
     return true;
 }
 

@@ -34,7 +34,8 @@ bool ProfileStore::open(Profile &profile, QString &error) const {
         QJsonObject meta{{"version", 1}, {"uuid", id}, {"name", profile.name},
                          {"created", profile.created.toString(Qt::ISODateWithMs)}};
         QSaveFile file(profile.directory + QStringLiteral("/profile.json"));
-        if (!file.open(QIODevice::WriteOnly) || file.write(QJsonDocument(meta).toJson()) < 0 || !file.commit()) {
+        const QByteArray json = QJsonDocument(meta).toJson();
+        if (!file.open(QIODevice::WriteOnly) || file.write(json) != json.size() || !file.commit()) {
             error = QStringLiteral("Cannot save profile metadata"); return false;
         }
         return true;

@@ -28,7 +28,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist/HAU-linux-x86_64
-          cp build/HAU dist/HAU-linux-x86_64/
+          cp build/bin/HAU dist/HAU-linux-x86_64/
           cp README.md LICENSE dist/HAU-linux-x86_64/
           tar -czf HAU-linux-x86_64.tar.gz -C dist HAU-linux-x86_64
       - uses: actions/upload-artifact@v4
@@ -60,7 +60,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist/HAU-windows-x64 | Out-Null
-          Copy-Item build/HAU.exe dist/HAU-windows-x64/
+          Copy-Item build/bin/HAU.exe dist/HAU-windows-x64/
           Copy-Item README.md,LICENSE dist/HAU-windows-x64/
           & "$env:QT_ROOT_DIR/bin/windeployqt.exe" --release --compiler-runtime --qmldir ui/qml dist/HAU-windows-x64/HAU.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
