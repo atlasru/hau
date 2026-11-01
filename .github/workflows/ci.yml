@@ -1,91 +1,85 @@
-name: Build and test
+name: Parley desktop build and verification
 on:
   push:
-    branches: [main]
+    branches: [main, 'parley/**']
   pull_request:
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
   linux:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install system dependencies
+      - name: Install desktop dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build git libsodium-dev pkg-config libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0
-      - uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.8.3'
-          modules: 'qtshadertools'
-          cache: true
-      - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-      - name: Build
-        run: cmake --build build --parallel 2
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
-      - name: Smoke test GUI and profile creation
+          sudo apt-get install -y build-essential cmake ninja-build git pkg-config qt6-base-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools libqt6svg6-dev libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev libswscale-dev libexif-dev libqrencode-dev libsqlcipher-dev libsodium-dev libopus-dev libvpx-dev libopenal-dev libv4l-dev libxss-dev libunwind-dev
+      - name: Build pinned Tox core, Parley, and run tests
+        env:
+          ALSOFT_DRIVERS: 'null'
+        run: ./scripts/build-linux.sh
+      - name: Package Linux build and corresponding source
         run: |
-          mkdir -p "$RUNNER_TEMP/hau-smoke"
-          set +e
-          QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software XDG_DATA_HOME="$RUNNER_TEMP/hau-smoke" timeout 5s ./build/bin/HAU > "$RUNNER_TEMP/hau-smoke.log" 2>&1
-          status=$?
-          set -e
-          cat "$RUNNER_TEMP/hau-smoke.log"
-          test "$status" -eq 124
-          test "$(find "$RUNNER_TEMP/hau-smoke" -name profile.tox | wc -l)" -eq 1
-      - name: Package
-        run: |
-          mkdir -p dist/HAU-linux-x86_64
-          cp build/bin/HAU dist/HAU-linux-x86_64/
-          cp README.md LICENSE dist/HAU-linux-x86_64/
-          tar -czf HAU-linux-x86_64.tar.gz -C dist HAU-linux-x86_64
+          mkdir -p dist/Parley-linux-x86_64
+          cp build/Parley LICENSE README.md dist/Parley-linux-x86_64/
+          cp -r docs dist/Parley-linux-x86_64/
+          ldd build/Parley > dist/Parley-linux-x86_64/runtime-dependencies.txt
+          tar -czf Parley-linux-x86_64.tar.gz -C dist Parley-linux-x86_64
+          git archive --format=tar.gz --prefix=Parley-source/ -o Parley-source.tar.gz HEAD
       - uses: actions/upload-artifact@v4
         with:
-          name: HAU-linux-x86_64
-          path: HAU-linux-x86_64.tar.gz
-
+          name: Parley-linux-x86_64
+          path: |
+            Parley-linux-x86_64.tar.gz
+            Parley-source.tar.gz
+            build/Testing/Temporary/LastTest.log
   windows:
     runs-on: windows-2022
-    env:
-      VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
     steps:
       - uses: actions/checkout@v4
-      - uses: jurplel/install-qt-action@v4
+      - uses: msys2/setup-msys2@v2
         with:
-          version: '6.8.3'
-          arch: win64_msvc2022_64
-          modules: 'qtshadertools'
-          cache: true
-      - uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgJsonGlob: 'vcpkg.json'
-          runVcpkgInstall: true
-      - uses: ilammy/msvc-dev-cmd@v1
-      - name: Locate pkgconf
-        shell: pwsh
+          msystem: UCRT64
+          update: true
+          install: >-
+            git make
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-qt6-svg
+            mingw-w64-ucrt-x86_64-qt6-tools
+            mingw-w64-ucrt-x86_64-ffmpeg
+            mingw-w64-ucrt-x86_64-libexif
+            mingw-w64-ucrt-x86_64-qrencode
+            mingw-w64-ucrt-x86_64-sqlcipher
+            mingw-w64-ucrt-x86_64-libsodium
+            mingw-w64-ucrt-x86_64-opus
+            mingw-w64-ucrt-x86_64-libvpx
+            mingw-w64-ucrt-x86_64-openal
+      - name: Build pinned Tox core, Parley, and run tests
+        shell: msys2 {0}
+        env:
+          ALSOFT_DRIVERS: 'null'
+        run: ./scripts/build-linux.sh
+      - name: Package Windows executable and runtime
+        shell: msys2 {0}
         run: |
-          $pkg = Get-ChildItem -Path "$env:GITHUB_WORKSPACE" -Recurse -Filter pkgconf.exe -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match "(vcpkg_installed|packages)" } | Select-Object -First 1
-          if (-not $pkg) { throw 'vcpkg pkgconf.exe was not found' }
-          "HAU_PKGCONF=$($pkg.FullName)" >> $env:GITHUB_ENV
-      - name: Configure
-        shell: pwsh
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DPKG_CONFIG_EXECUTABLE="$env:HAU_PKGCONF"
-      - name: Build
-        run: cmake --build build --parallel 2
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
-      - name: Package runnable application
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force dist/HAU-windows-x64 | Out-Null
-          Copy-Item build/bin/HAU.exe dist/HAU-windows-x64/
-          Copy-Item README.md,LICENSE dist/HAU-windows-x64/
-          & "$env:QT_ROOT_DIR/bin/windeployqt.exe" --release --compiler-runtime --qmldir ui/qml dist/HAU-windows-x64/HAU.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Compress-Archive -Path dist/HAU-windows-x64 -DestinationPath HAU-windows-x64.zip
+          set -euo pipefail
+          mkdir -p dist/Parley-windows-x64
+          cp build/Parley.exe LICENSE README.md dist/Parley-windows-x64/
+          cp -r docs dist/Parley-windows-x64/
+          windeployqt --release --compiler-runtime dist/Parley-windows-x64/Parley.exe
+          ldd build/Parley.exe | awk '/\/ucrt64\/bin\// { print $3 }' | while read -r dll; do
+            cp "$dll" dist/Parley-windows-x64/
+          done
+          git archive --format=tar.gz --prefix=Parley-source/ -o Parley-source.tar.gz HEAD
       - uses: actions/upload-artifact@v4
         with:
-          name: HAU-windows-x64
-          path: HAU-windows-x64.zip
+          name: Parley-windows-x64
+          path: |
+            dist/Parley-windows-x64
+            Parley-source.tar.gz
+            build/Testing/Temporary/LastTest.log

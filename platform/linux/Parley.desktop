@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Parley
+Comment=Private peer-to-peer Tox messenger
+Exec=Parley %u
+Icon=Parley
+Terminal=false
+Categories=Network;InstantMessaging;
+MimeType=x-scheme-handler/tox;application/x-tox;

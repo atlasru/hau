@@ -1,44 +1,59 @@
-# HAU
+# Parley
 
-HAU is an early desktop messenger built on the decentralized Tox network. It aims to make a private, peer-to-peer identity simple to create and keep on your own device.
+A desktop Tox messenger based on the working TokTok/qTox implementation.
+Windows/Linux are desktop targets. Android and iOS are not supported builds.
 
-**Status:** 0.1.0 foundation release. HAU currently creates one local profile, generates a Tox identity, saves it across restarts, connects to Tox bootstrap nodes, and lets you copy your Tox ID. Contacts and chat are planned for later versions; this release is not yet a usable messenger.
+**Development build. Full qTox parity is not certified.** See the
+[feature matrix](docs/QTOX_FEATURE_MATRIX.md),
+[verification results](docs/VERIFICATION.md) and
+[limitations](docs/LIMITATIONS.md) for exact scope.
 
-## Platforms
+## Working backend
 
-Windows 10/11 x64 is the primary target. Linux x86_64 is supported for development. No account or central HAU server is needed.
+Private messages, offline outgoing queue, delivery receipts, typing, searchable
+SQLCipher history, Tox friend requests, legacy conferences, audio/video calls,
+screen sharing, actual file transfers, avatars, presence, profile encryption,
+multiple local accounts, proxies and advanced network/AV/privacy controls all
+use the imported qTox implementation. No mock call or transfer backend exists.
 
-## Build
+Parley adds persistent archive/pin/mute/deleted-chat states, unread badges, local
+history purge that clears session memory too, account state isolation and a
+shared desktop design system with light/dark/AMOLED palettes and system accent
+choices. Glass highlights use an opaque fallback; this is not native iOS blur.
 
-Requirements: CMake 3.24+, C++20 compiler (MSVC 2022 on Windows), Qt 6.5+ with Quick, Quick Controls 2, SQL SQLite driver and Test modules, libsodium, Git, and Ninja. CMake fetches the tagged [c-toxcore v0.2.23](https://github.com/TokTok/c-toxcore/releases/tag/v0.2.23) source; no binary toxcore download is needed.
+## Use
 
-Linux (Ubuntu): install `libsodium-dev`, `pkg-config`, `libgl1-mesa-dev`, Qt 6 development packages and their QML modules. Then:
+- Create/import a `.tox` identity on the account screen. Password is optional.
+- Open **Profile → Logout / Switch accounts** to choose another identity without
+  restarting. The old network and AV workers are destroyed before selection.
+- Right-click a contact for pin, archive, mute, clear history or delete chat.
+- **Delete chat** clears local records and hides the conversation; it keeps the
+  Tox contact. **Contacts (including deleted chats)** restores access. A new
+  incoming message makes a deleted chat visible again.
+- **Remove friend** removes the actual Tox contact, with confirmation and the
+  option to remove history. Other clients' history cannot be remotely deleted.
+- **Archived chats** in the filter menu shows the archive. Text search includes
+  archived conversations. Pin order and unread counters survive restart.
+- **Settings → User Interface** contains theme and motion controls.
 
-```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-ctest --test-dir build --output-on-failure
-./build/HAU
-```
+Downloaded files are not erased by deleting chat history. Finish/cancel active
+transfers before clearing history. Do not share exported `.tox` identities.
 
-Windows: install Qt 6.8.3 for MSVC 2022, Ninja and vcpkg. `vcpkg.json` installs libsodium for the static triplet:
+## Build and distribution
 
-```powershell
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
-cmake --build build
-ctest --test-dir build --output-on-failure
-```
+See [build instructions](docs/BUILDING.md). Root CMake builds a native Qt Widgets
+application, not the old QML foundation. All applicable qTox settings screens
+remain available. `scripts/build-linux.sh` pins c-toxcore v0.2.23 including its
+submodule and runs the test suite. CI packages Linux and Windows artifacts.
 
-Set `CMAKE_PREFIX_PATH` if CMake cannot locate Qt. GitHub Actions builds both platforms; the Windows workflow packages Qt plugins and runtime DLLs with `windeployqt` into `HAU-windows-x64.zip`. The Linux tarball is a build artifact, not a standalone AppImage; host Qt and libsodium are required.
-
-## Local data
-
-The app uses Qt's application data directory, under `HAU/profiles/<uuid>/`: `profile.json` stores non-secret metadata, `profile.tox` contains the sensitive Tox identity, and `hau.db` stores schema migrations. Back up `profile.tox` securely. If it is missing or corrupt, HAU refuses to replace it silently. Local data is not encrypted at rest in 0.1.0.
-
-## Roadmap
-
-Next: contacts and one-to-one messaging, followed by protected local storage, file transfer and calls. See [architecture](docs/ARCHITECTURE.md) for the current boundaries.
+Use Profile → Export for an interoperable identity backup. This exports the
+identity and contacts, **not** messages/downloads. For complete offline backups,
+close Parley and copy its entire data directory. Import HAU's old
+`HAU/profiles/<uuid>/profile.tox` through the importer using a distinct basename.
+Automatic conversion of the old foundation metadata/database is unnecessary
+because it contained no messages, and is not performed.
 
 ## License
 
-MIT. Toxcore and libsodium retain their own upstream licenses; fetched dependencies are not copied into this repository.
+GPL-3.0-or-later, derived from qTox. Original attribution and dependency notices
+are preserved. See [provenance](docs/UPSTREAM.md) and `LICENSE`.
